@@ -10,7 +10,7 @@
     <version>1.0.0</version>
 
     <name>opt-log</name>
-    <url>https://github.com/Hadymic/opt-log</url>
+    <url>https://github.com/hadymic/opt-log</url>
     <description>通用操作日志组件</description>
 
     <parent>

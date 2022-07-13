@@ -13,10 +13,21 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
+    <name>opt-log</name>
+    <url>https://github.com/hadymic/opt-log</url>
+    <description>通用操作日志组件</description>
+
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
 
     <developers>
         <developer>
@@ -27,9 +38,16 @@
     </developers>
 
     <scm>
-        <url>https://github.com/Hadymic/opt-log</url>
-        <connection>https://github.com/Hadymic/opt-log.git</connection>
+        <url>https://github.com/hadymic/opt-log</url>
+        <connection>https://github.com/hadymic/opt-log.git</connection>
     </scm>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <dependencies>
         <dependency>
@@ -112,7 +130,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
                     <autoReleaseAfterClose>true</autoReleaseAfterClose>
                 </configuration>
             </plugin>
