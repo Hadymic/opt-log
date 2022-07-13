@@ -35,7 +35,7 @@ public class OptLogTest {
                 .build();
         userService.createUser(user);
         OptLogRecord record = optLogTestService.getRecord("createUser");
-        Assert.assertEquals("添加用户成功, 用户id: 1, 用户名: 张三, 结果: true", record.getContent());
+        Assert.assertEquals("添加用户成功, 用户id: 1, 用户名: 张三", record.getContent());
     }
 
     @Test
