@@ -15,7 +15,7 @@ public class OptLogFunction {
     private Method method;
     private boolean isStatic;
 
-    public String getBeanMethod(String args) {
-        return "@" + beanName + "." + methodName + "(" + args + ")";
+    public String getBeanMethod() {
+        return "@" + beanName + "." + methodName + "(";
     }
 }

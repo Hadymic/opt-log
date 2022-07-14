@@ -2,7 +2,6 @@ package io.github.hadymic.log.example.service;
 
 import io.github.hadymic.log.annotation.OptLog;
 import io.github.hadymic.log.constant.OptLogOperation;
-import io.github.hadymic.log.context.OptLogContext;
 import io.github.hadymic.log.example.entity.User;
 import io.github.hadymic.log.example.function.UserFunction;
 import lombok.extern.slf4j.Slf4j;
@@ -60,14 +59,12 @@ public class UserService {
     /**
      * Diff函数测试
      */
-    @OptLog(success = "更新用户成功, #{#Diff(#oldUser, #newUser)}",
+    @OptLog(success = "更新用户成功, #{#Diff(#user(#newUser.id), #newUser)}",
             fail = "更新用户失败, 失败原因: #{#_errMsg}",
             bizId = "#newUser.id",
             category = "'user'",
             operate = OptLogOperation.UPDATE,
             tenant = "'diffTest'")
     public void diffTest(User newUser) {
-        User oldUser = userFunction.getUserById(newUser.getId());
-        OptLogContext.putVariable("oldUser", oldUser);
     }
 }

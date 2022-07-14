@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  */
 public class OptLogFunctionParser implements BeanFactoryAware {
 
-    private static final Pattern FUNCTION_PATTERN = Pattern.compile("#(\\w+)\\((.*?)\\)");
+    private static final Pattern FUNCTION_PATTERN = Pattern.compile("#(.*?)\\(");
     private static final Pattern TEMPLATE_PATTERN = Pattern.compile("#\\{(.*?)}");
 
     private OptLogFunctionCache functionCache;
@@ -170,25 +170,40 @@ public class OptLogFunctionParser implements BeanFactoryAware {
     }
 
     private String parseTemplate(String template) {
-        Matcher matcher = FUNCTION_PATTERN.matcher(template);
+        Matcher matcher = TEMPLATE_PATTERN.matcher(template);
+        if (!matcher.find()) {
+            return matchFunction(template);
+        }
         StringBuffer sb = new StringBuffer();
-        while (matcher.find()) {
+        do {
+            String match = matcher.group(1);
+            String func = matchFunction(match);
+            matcher.appendReplacement(sb, "#{" + func + "}");
+        } while (matcher.find());
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    private String matchFunction(String template) {
+        Matcher matcher = FUNCTION_PATTERN.matcher(template);
+        if (!matcher.find()) {
+            return template;
+        }
+        StringBuffer sb = new StringBuffer();
+        do {
             String functionName = matcher.group(1);
-            String args = matcher.group(2);
             OptLogFunction function = functionCache.getFunction(functionName);
             if (function == null) {
                 continue;
             }
-            String replace;
             if (function.isStatic()) {
                 StandardEvaluationContext context = OptLogContext.getContext();
                 context.registerFunction(functionName, function.getMethod());
-                replace = matcher.group();
             } else {
-                replace = function.getBeanMethod(args);
+                String replace = function.getBeanMethod();
+                matcher.appendReplacement(sb, replace);
             }
-            matcher.appendReplacement(sb, replace);
-        }
+        } while (matcher.find());
         matcher.appendTail(sb);
         return sb.toString();
     }
