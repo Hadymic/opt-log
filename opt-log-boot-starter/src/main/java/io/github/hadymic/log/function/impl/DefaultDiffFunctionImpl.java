@@ -3,7 +3,9 @@ package io.github.hadymic.log.function.impl;
 import de.danielbechler.diff.node.DiffNode;
 import io.github.hadymic.log.annotation.OptLogField;
 import io.github.hadymic.log.configuration.OptLogProperties;
+import io.github.hadymic.log.context.OptLogContext;
 import io.github.hadymic.log.function.IDiffFunction;
+import io.github.hadymic.log.parse.OptLogSpELSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 
@@ -16,7 +18,7 @@ import java.util.Collection;
  * @author Hadymic
  */
 @Slf4j
-public class DefaultDiffFunctionImpl implements IDiffFunction {
+public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffFunction {
 
     private OptLogProperties properties;
 
@@ -43,15 +45,15 @@ public class DefaultDiffFunctionImpl implements IDiffFunction {
         if (!StringUtils.hasText(fieldName)) {
             return;
         }
-        String content = getDiffContent(source, target, node, fieldName);
+        String content = getDiffContent(source, target, node, fieldName, fieldAnnotation.function());
         if (StringUtils.hasText(content)) {
             sb.append(content).append(properties.getField().getFieldSeparator());
         }
     }
 
-    private String getDiffContent(Object source, Object target, DiffNode node, String fieldName) {
+    private String getDiffContent(Object source, Object target, DiffNode node, String fieldName, String function) {
         if (valueIsCollection(node, source, target)) {
-            return getCollectionDiffContent(source, target, node, fieldName);
+            return getCollectionDiffContent(source, target, node, fieldName, function);
         }
 
         DiffNode.State state = node.getState();
@@ -59,28 +61,28 @@ public class DefaultDiffFunctionImpl implements IDiffFunction {
             case ADDED:
                 return properties.getDiffTemplate().getAdd()
                         .replace(properties.getField().getFieldName(), fieldName)
-                        .replace(properties.getField().getTargetValue(), String.valueOf(node.canonicalGet(target)));
+                        .replace(properties.getField().getTargetValue(), getFunctionResult(node.canonicalGet(target), function));
             case CHANGED:
                 return properties.getDiffTemplate().getUpdate()
                         .replace(properties.getField().getFieldName(), fieldName)
-                        .replace(properties.getField().getSourceValue(), String.valueOf(node.canonicalGet(source)))
-                        .replace(properties.getField().getTargetValue(), String.valueOf(node.canonicalGet(target)));
+                        .replace(properties.getField().getSourceValue(), getFunctionResult(node.canonicalGet(source), function))
+                        .replace(properties.getField().getTargetValue(), getFunctionResult(node.canonicalGet(target), function));
             case REMOVED:
                 return properties.getDiffTemplate().getDelete()
                         .replace(properties.getField().getFieldName(), fieldName)
-                        .replace(properties.getField().getSourceValue(), String.valueOf(node.canonicalGet(source)));
+                        .replace(properties.getField().getSourceValue(), getFunctionResult(node.canonicalGet(source), function));
             default:
                 return "";
         }
     }
 
-    private String getCollectionDiffContent(Object source, Object target, DiffNode node, String fieldName) {
+    private String getCollectionDiffContent(Object source, Object target, DiffNode node, String fieldName, String function) {
         Collection<Object> sourceList = getListValue(node, source);
         Collection<Object> targetList = getListValue(node, target);
         Collection<Object> addList = listSubtract(targetList, sourceList);
         Collection<Object> delList = listSubtract(sourceList, targetList);
-        String addContent = getListContent(addList);
-        String delContent = getListContent(delList);
+        String addContent = getListContent(addList, function);
+        String delContent = getListContent(delList, function);
         if (StringUtils.hasText(addContent) && StringUtils.hasText(delContent)) {
             return properties.getDiffTemplate().getUpdateForList()
                     .replace(properties.getField().getFieldName(), fieldName)
@@ -112,11 +114,11 @@ public class DefaultDiffFunctionImpl implements IDiffFunction {
         return addItemList;
     }
 
-    private String getListContent(Collection<Object> list) {
+    private String getListContent(Collection<Object> list, String function) {
         String separator = properties.getField().getListItemSeparator();
         StringBuilder sb = new StringBuilder();
         for (Object obj : list) {
-            sb.append(obj).append(separator);
+            sb.append(getFunctionResult(obj, function)).append(separator);
         }
         return sb.toString().replaceAll(separator + "$", "");
     }
@@ -155,6 +157,15 @@ public class DefaultDiffFunctionImpl implements IDiffFunction {
             parent = parent.getParentNode();
         }
         return parentFieldName.toString();
+    }
+
+    private String getFunctionResult(Object value, String function) {
+        if (!StringUtils.hasText(function)) {
+            return String.valueOf(value);
+        }
+        OptLogContext.putVariable(properties.getVariable().getDiffField(), value);
+        Object result = resolveTemplate(function);
+        return String.valueOf(result);
     }
 
     public void setProperties(OptLogProperties properties) {

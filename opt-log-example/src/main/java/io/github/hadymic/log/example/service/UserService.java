@@ -34,7 +34,7 @@ public class UserService {
     /**
      * 自定义函数测试
      */
-    @OptLog(success = "更新用户成功, 用户名由'#{#username(#newUser.id)}'变更为'#{#newUser.name}'",
+    @OptLog(success = "更新用户成功, 用户名由'#{@username(#newUser.id)}'变更为'#{#newUser.name}'",
             fail = "更新用户失败, 失败原因: #{#_errMsg}",
             bizId = "#newUser.id",
             category = "'user'",
@@ -49,7 +49,7 @@ public class UserService {
     /**
      * 静态方法测试
      */
-    @OptLog(success = "静态测试成功, value: #{#staticTest('123')}",
+    @OptLog(success = "静态测试成功, value: #{@staticTest('123')}",
             fail = "静态测试失败, 失败原因: #{#_errMsg}",
             operate = OptLogOperation.QUERY,
             tenant = "'staticTest'")
@@ -59,12 +59,26 @@ public class UserService {
     /**
      * Diff函数测试
      */
-    @OptLog(success = "更新用户成功, #{#Diff(#user(#newUser.id), #newUser)}",
+    @OptLog(success = "更新用户成功, #{@Diff(@user(#newUser.id), #newUser)}",
             fail = "更新用户失败, 失败原因: #{#_errMsg}",
             bizId = "#newUser.id",
             category = "'user'",
             operate = OptLogOperation.UPDATE,
             tenant = "'diffTest'")
     public void diffTest(User newUser) {
+    }
+
+    /**
+     * parse before测试
+     */
+    @OptLog(success = "更新用户成功, #{@Diff(@user(#newUser.id), @test(#newUser))}",
+            fail = "更新用户失败, 失败原因: #{#_errMsg}",
+            bizId = "#newUser.id",
+            category = "'user'",
+            operate = OptLogOperation.UPDATE,
+            tenant = "'beforeTest'",
+            parseBefore = true)
+    public void beforeTest(User newUser) {
+        userFunction.updateUser(newUser.getId(), newUser.getName());
     }
 }

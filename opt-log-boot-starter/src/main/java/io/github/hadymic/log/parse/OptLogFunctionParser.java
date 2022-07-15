@@ -1,68 +1,78 @@
 package io.github.hadymic.log.parse;
 
-import io.github.hadymic.log.cache.OptLogFunctionCache;
+import io.github.hadymic.log.annotation.EnableOptLog;
 import io.github.hadymic.log.configuration.OptLogProperties;
 import io.github.hadymic.log.context.OptLogContext;
+import io.github.hadymic.log.enums.OptLogSpEL;
 import io.github.hadymic.log.enums.OptLogStatus;
 import io.github.hadymic.log.model.MethodExecuteResult;
-import io.github.hadymic.log.model.OptLogFunction;
 import io.github.hadymic.log.model.OptLogOps;
 import io.github.hadymic.log.model.OptLogRecord;
+import io.github.hadymic.log.model.OptLogSpELStatus;
 import io.github.hadymic.log.service.IOperatorService;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.expression.Expression;
-import org.springframework.expression.ParserContext;
-import org.springframework.expression.common.TemplateParserContext;
-import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
-import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * @author Hadymic
  */
-public class OptLogFunctionParser implements BeanFactoryAware {
-
-    private static final Pattern FUNCTION_PATTERN = Pattern.compile("#(.*?)\\(");
-    private static final Pattern TEMPLATE_PATTERN = Pattern.compile("#\\{(.*?)}");
-
-    private OptLogFunctionCache functionCache;
+public class OptLogFunctionParser extends OptLogSpELSupport implements ApplicationContextAware {
 
     private OptLogProperties properties;
 
     private IOperatorService operatorService;
 
-    private BeanFactory beanFactory;
+    private ApplicationContext applicationContext;
 
     private final OptLogExpressionEvaluator expressionEvaluator = new OptLogExpressionEvaluator();
-    private final SpelExpressionParser expressionParser = new SpelExpressionParser();
-    private final TemplateParserContext templateParserContext = new TemplateParserContext();
+
+    private OptLogSpELStatus spELStatus;
+
+    @PostConstruct
+    public void init() {
+        Map<String, Object> beanMap = applicationContext.getBeansWithAnnotation(EnableOptLog.class);
+        OptLogSpEL[] array = OptLogSpEL.ALL;
+        if (!CollectionUtils.isEmpty(beanMap)) {
+            for (Object value : beanMap.values()) {
+                Class<?> targetClass = AopUtils.getTargetClass(value);
+                EnableOptLog annotation = AnnotationUtils.findAnnotation(targetClass, EnableOptLog.class);
+                if (annotation != null) {
+                    array = annotation.enableSpEL();
+                    break;
+                }
+            }
+        }
+        spELStatus = OptLogSpELStatus.of(array);
+    }
 
     public void initContext(Method method, Object[] args) {
         StandardEvaluationContext context = expressionEvaluator
-                .createEvaluationContext(method, args, beanFactory);
+                .createEvaluationContext(method, args, applicationContext);
         OptLogContext.setContext(context);
     }
 
-    public List<OptLogRecord> resolveBefore(List<OptLogOps> opsList) {
-        if (CollectionUtils.isEmpty(opsList)) {
-            return new ArrayList<>();
-        }
-        return opsList.stream()
+    public List<OptLogRecord> resolveBefore(List<OptLogOps> beforeRecordOps, List<OptLogOps> beforeParseOps) {
+        List<OptLogRecord> records = beforeRecordOps.stream()
                 .map(ops -> resolve(ops, null, null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+        for (OptLogOps ops : beforeParseOps) {
+            parseBefore(ops);
+        }
+        return records;
     }
 
     public List<OptLogRecord> resolveAfter(List<OptLogOps> opsList, Object result, MethodExecuteResult executeResult) {
@@ -78,17 +88,83 @@ public class OptLogFunctionParser implements BeanFactoryAware {
                 .collect(Collectors.toList());
     }
 
+    private void parseBefore(OptLogOps ops) {
+        OptLogSpELStatus status = ops.getStatus();
+        if (spELStatus.isCondition() && status.isCondition()) {
+            Boolean condition = resolveTemplate(ops.getCondition(), Boolean.class);
+            if (condition == null || !condition) {
+                ops.setCondition("false");
+                return;
+            } else {
+                ops.setCondition("true");
+            }
+        }
+        if (spELStatus.isSuccess() && status.isSuccess()) {
+            ops.setSuccess(parseBefore(ops.getSuccess()));
+        }
+        if (spELStatus.isFail() && status.isFail()) {
+            ops.setFail(parseBefore(ops.getFail()));
+        }
+        if (spELStatus.isOperator() && status.isOperator()) {
+            ops.setOperator(parseBefore(ops.getOperator()));
+        }
+        if (spELStatus.isBizId() && status.isBizId()) {
+            ops.setBizId(parseBefore(ops.getBizId()));
+        }
+        if (spELStatus.isTenant() && status.isTenant()) {
+            ops.setTenant(parseBefore(ops.getTenant()));
+        }
+        if (spELStatus.isCategory() && status.isCategory()) {
+            ops.setCategory(parseBefore(ops.getCategory()));
+        }
+        if (spELStatus.isOperate() && status.isOperate()) {
+            ops.setOperate(parseBefore(ops.getOperate()));
+        }
+        if (spELStatus.isExtra() && status.isExtra()) {
+            ops.setExtra(parseBefore(ops.getExtra()));
+        }
+    }
+
+    private String parseBefore(String template) {
+        Object resolve = resolveTemplate(template);
+        if (resolve == null) {
+            return null;
+        } else {
+            return "'" + toString(resolve) + "'";
+        }
+    }
+
     private OptLogRecord resolve(OptLogOps ops, Object result, MethodExecuteResult executeResult) {
-        Boolean condition = resolveTemplate(ops.getCondition(), Boolean.class);
+        Boolean condition;
+        if (spELStatus.isCondition()) {
+            condition = resolveTemplate(ops.getCondition(), Boolean.class);
+        } else {
+            condition = "true".equals(ops.getCondition());
+        }
         if (condition == null || !condition) {
             return null;
         }
 
-        Object bizId = resolveTemplate(ops.getBizId());
-        Object tenant = resolveTemplate(ops.getTenant());
-        Object category = resolveTemplate(ops.getCategory());
-        Object operate = resolveTemplate(ops.getOperate());
-        Object extra = resolveTemplate(ops.getExtra());
+        Object bizId = ops.getBizId();
+        if (spELStatus.isBizId()) {
+            bizId = resolveTemplate(ops.getBizId());
+        }
+        Object tenant = ops.getTenant();
+        if (spELStatus.isTenant()) {
+            tenant = resolveTemplate(ops.getTenant());
+        }
+        Object category = ops.getCategory();
+        if (spELStatus.isCategory()) {
+            category = resolveTemplate(ops.getCategory());
+        }
+        Object operate = ops.getOperate();
+        if (spELStatus.isOperate()) {
+            operate = resolveTemplate(ops.getOperate());
+        }
+        Object extra = ops.getExtra();
+        if (spELStatus.isExtra()) {
+            extra = resolveTemplate(ops.getExtra());
+        }
 
         Object content;
         OptLogStatus status = OptLogStatus.BEFORE;
@@ -96,13 +172,25 @@ public class OptLogFunctionParser implements BeanFactoryAware {
         Long executeTime = null;
         String errorMsg = null;
         if (executeResult == null) {
-            content = resolveTemplate(ops.getSuccess());
+            if (spELStatus.isSuccess()) {
+                content = resolveTemplate(ops.getSuccess());
+            } else {
+                content = ops.getSuccess();
+            }
         } else {
             if (executeResult.isSuccess()) {
-                content = resolveTemplate(ops.getSuccess());
+                if (spELStatus.isSuccess()) {
+                    content = resolveTemplate(ops.getSuccess());
+                } else {
+                    content = ops.getSuccess();
+                }
                 status = OptLogStatus.SUCCESS;
             } else {
-                content = resolveTemplate(ops.getFail());
+                if (spELStatus.isFail()) {
+                    content = resolveTemplate(ops.getFail());
+                } else {
+                    content = ops.getSuccess();
+                }
                 status = OptLogStatus.FAIL;
             }
             operateTime = executeResult.getOperateTime();
@@ -110,7 +198,12 @@ public class OptLogFunctionParser implements BeanFactoryAware {
             errorMsg = executeResult.getErrorMsg();
         }
 
-        Object operator = resolveTemplate(ops.getOperator());
+        Object operator;
+        if (spELStatus.isOperator()) {
+            operator = resolveTemplate(ops.getOperator());
+        } else {
+            operator = ops.getOperator();
+        }
         if (operator == null) {
             operator = operatorService.getOperator();
         }
@@ -131,87 +224,6 @@ public class OptLogFunctionParser implements BeanFactoryAware {
         return logRecord;
     }
 
-    private String toString(@Nullable Object obj) {
-        if (obj == null) {
-            return null;
-        }
-        return obj.toString();
-    }
-
-    private Object resolveTemplate(String template) {
-        if (!StringUtils.hasText(template)) {
-            return null;
-        }
-        String parsed = parseTemplate(template);
-        StandardEvaluationContext context = OptLogContext.getContext();
-        ParserContext parserContext = getParserContext(template);
-        Expression expression = expressionParser.parseExpression(parsed, parserContext);
-        return expression.getValue(context);
-    }
-
-    private <T> T resolveTemplate(String template, Class<T> clazz) {
-        if (!StringUtils.hasText(template)) {
-            return null;
-        }
-        String parsed = parseTemplate(template);
-        StandardEvaluationContext context = OptLogContext.getContext();
-        ParserContext parserContext = getParserContext(template);
-        Expression expression = expressionParser.parseExpression(parsed, parserContext);
-        return expression.getValue(context, clazz);
-    }
-
-    private ParserContext getParserContext(String template) {
-        Matcher matcher = TEMPLATE_PATTERN.matcher(template);
-        if (matcher.find()) {
-            return templateParserContext;
-        } else {
-            return null;
-        }
-    }
-
-    private String parseTemplate(String template) {
-        Matcher matcher = TEMPLATE_PATTERN.matcher(template);
-        if (!matcher.find()) {
-            return matchFunction(template);
-        }
-        StringBuffer sb = new StringBuffer();
-        do {
-            String match = matcher.group(1);
-            String func = matchFunction(match);
-            matcher.appendReplacement(sb, "#{" + func + "}");
-        } while (matcher.find());
-        matcher.appendTail(sb);
-        return sb.toString();
-    }
-
-    private String matchFunction(String template) {
-        Matcher matcher = FUNCTION_PATTERN.matcher(template);
-        if (!matcher.find()) {
-            return template;
-        }
-        StringBuffer sb = new StringBuffer();
-        do {
-            String functionName = matcher.group(1);
-            OptLogFunction function = functionCache.getFunction(functionName);
-            if (function == null) {
-                continue;
-            }
-            if (function.isStatic()) {
-                StandardEvaluationContext context = OptLogContext.getContext();
-                context.registerFunction(functionName, function.getMethod());
-            } else {
-                String replace = function.getBeanMethod();
-                matcher.appendReplacement(sb, replace);
-            }
-        } while (matcher.find());
-        matcher.appendTail(sb);
-        return sb.toString();
-    }
-
-    public void setFunctionCache(OptLogFunctionCache functionCache) {
-        this.functionCache = functionCache;
-    }
-
     public void setProperties(OptLogProperties properties) {
         this.properties = properties;
     }
@@ -221,7 +233,7 @@ public class OptLogFunctionParser implements BeanFactoryAware {
     }
 
     @Override
-    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-        this.beanFactory = beanFactory;
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
     }
 }

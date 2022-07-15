@@ -70,6 +70,24 @@ public class OptLogTest {
                 .build();
         userService.diffTest(user);
         OptLogRecord record = optLogTestService.getRecord("diffTest");
-        Assert.assertEquals("更新用户成功, 用户KEY删除了DEF；名称从张三修改为张小三", record.getContent());
+        Assert.assertEquals("更新用户成功, 用户KEY删除了_DEF_；名称从张三修改为张小三", record.getContent());
+    }
+
+    @Test
+    public void beforeTest() {
+        Role role = Role.builder()
+                .id(1)
+                .name("admin")
+                .build();
+        User user = User.builder()
+                .id(1)
+                .name("张小三")
+                .keys(Lists.list("ABC", "GHI"))
+                .role(role)
+                .build();
+        userService.beforeTest(user);
+        OptLogRecord record = optLogTestService.getRecord("beforeTest");
+        log.info(record.toString());
+        Assert.assertEquals("更新用户成功, 用户KEY添加了_GHI_，删除了_DEF_；名称从张三修改为张小三", record.getContent());
     }
 }

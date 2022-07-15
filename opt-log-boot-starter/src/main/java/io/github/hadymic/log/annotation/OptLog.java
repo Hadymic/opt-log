@@ -1,5 +1,7 @@
 package io.github.hadymic.log.annotation;
 
+import io.github.hadymic.log.enums.OptLogSpEL;
+
 import java.lang.annotation.*;
 
 /**
@@ -60,5 +62,17 @@ public @interface OptLog {
     /**
      * 是否在方法执行前记录日志, 默认为false
      */
-    boolean before() default false;
+    boolean recordBefore() default false;
+
+    /**
+     * 是否在方法执行前解析函数,
+     * 默认仅在success生效
+     */
+    boolean parseBefore() default false;
+
+    /**
+     * 在方法执行前解析函数生效,
+     * 默认仅在success生效
+     */
+    OptLogSpEL[] enableParseBefore() default OptLogSpEL.SUCCESS;
 }

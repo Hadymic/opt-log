@@ -16,5 +16,7 @@ public class OptLogOps {
     private String operate;
     private String extra;
     private String condition;
-    private boolean before;
+    private boolean recordBefore;
+    private boolean parseBefore;
+    private OptLogSpELStatus status;
 }

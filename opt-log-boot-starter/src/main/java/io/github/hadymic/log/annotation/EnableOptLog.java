@@ -1,6 +1,7 @@
 package io.github.hadymic.log.annotation;
 
 import io.github.hadymic.log.configuration.OptLogImportSelector;
+import io.github.hadymic.log.enums.OptLogSpEL;
 import org.springframework.context.annotation.AdviceMode;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
@@ -23,4 +24,12 @@ public @interface EnableOptLog {
     AdviceMode mode() default AdviceMode.PROXY;
 
     int order() default Ordered.LOWEST_PRECEDENCE;
+
+    OptLogSpEL[] enableSpEL() default {
+            OptLogSpEL.SUCCESS, OptLogSpEL.FAIL,
+            OptLogSpEL.OPERATOR, OptLogSpEL.BIZ_ID,
+            OptLogSpEL.TENANT, OptLogSpEL.CATEGORY,
+            OptLogSpEL.OPERATE, OptLogSpEL.EXTRA,
+            OptLogSpEL.CONDITION
+    };
 }

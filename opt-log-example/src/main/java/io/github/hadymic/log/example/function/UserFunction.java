@@ -42,7 +42,8 @@ public class UserFunction {
 
     @OptLogFunc("user")
     public User getUserById(int id) {
-        return userMap.get(id);
+        User user = userMap.get(id);
+        return new User(user.getId(), user.getName(), user.getKeys(), user.getRole());
     }
 
     @OptLogFunc("username")
@@ -57,5 +58,16 @@ public class UserFunction {
     @OptLogFunc
     public static String staticTest(String value) {
         return "_" + value + "_";
+    }
+
+    @OptLogFunc
+    public Object test(Object value) {
+        return value;
+    }
+
+    public void updateUser(int id, String name) {
+        User user = getUserById(id);
+        user.setName(name);
+        userMap.put(id, user);
     }
 }

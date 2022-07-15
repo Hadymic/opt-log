@@ -20,6 +20,7 @@ public class OptLogProperties {
     public static class VariableProperties {
         private String result = "_result";
         private String errorMsg = "_errMsg";
+        private String diffField = "__field";
     }
 
     @Data

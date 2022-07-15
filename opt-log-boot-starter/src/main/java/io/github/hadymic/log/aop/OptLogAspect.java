@@ -5,6 +5,7 @@ import io.github.hadymic.log.context.OptLogContext;
 import io.github.hadymic.log.model.MethodExecuteResult;
 import io.github.hadymic.log.model.OptLogOps;
 import io.github.hadymic.log.model.OptLogRecord;
+import io.github.hadymic.log.model.OptLogSpELStatus;
 import io.github.hadymic.log.parse.OptLogFunctionParser;
 import io.github.hadymic.log.service.IOptLogService;
 import lombok.extern.slf4j.Slf4j;
@@ -52,11 +53,14 @@ public class OptLogAspect {
         }
 
         // 分离执行前记录和执行后记录
-        List<OptLogOps> beforeOps = new ArrayList<>();
+        List<OptLogOps> beforeRecordOps = new ArrayList<>();
+        List<OptLogOps> beforeParseOps = new ArrayList<>();
         List<OptLogOps> afterOps = new ArrayList<>();
         for (OptLogOps ops : opsList) {
-            if (ops.isBefore()) {
-                beforeOps.add(ops);
+            if (ops.isRecordBefore()) {
+                beforeRecordOps.add(ops);
+            } else if (ops.isParseBefore()) {
+                beforeParseOps.add(ops);
             } else {
                 afterOps.add(ops);
             }
@@ -64,7 +68,7 @@ public class OptLogAspect {
 
         // 执行前记录
         try {
-            List<OptLogRecord> beforeRecords = functionParser.resolveBefore(beforeOps);
+            List<OptLogRecord> beforeRecords = functionParser.resolveBefore(beforeRecordOps, beforeParseOps);
             for (OptLogRecord record : beforeRecords) {
                 optLogService.record(record);
             }
@@ -84,6 +88,7 @@ public class OptLogAspect {
 
         // 执行后记录
         try {
+            afterOps.addAll(beforeParseOps);
             List<OptLogRecord> afterRecords = functionParser.resolveAfter(afterOps, result, executeResult);
             for (OptLogRecord record : afterRecords) {
                 optLogService.record(record);
@@ -133,7 +138,9 @@ public class OptLogAspect {
         ops.setOperate(optLog.operate());
         ops.setExtra(optLog.extra());
         ops.setCondition(optLog.condition());
-        ops.setBefore(optLog.before());
+        ops.setRecordBefore(optLog.recordBefore());
+        ops.setParseBefore(optLog.parseBefore());
+        ops.setStatus(OptLogSpELStatus.of(optLog.enableParseBefore()));
         return ops;
     }
 

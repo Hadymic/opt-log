@@ -70,8 +70,10 @@ public class OptLogAutoConfiguration implements ImportAware {
 
     @Bean
     @ConditionalOnMissingBean(IDiffFunction.class)
-    public IDiffFunction diffFunction(OptLogProperties optLogProperties) {
+    public IDiffFunction diffFunction(OptLogFunctionCache optLogFunctionCache,
+                                      OptLogProperties optLogProperties) {
         DefaultDiffFunctionImpl diffFunction = new DefaultDiffFunctionImpl();
+        diffFunction.setFunctionCache(optLogFunctionCache);
         diffFunction.setProperties(optLogProperties);
         return diffFunction;
     }

@@ -22,7 +22,7 @@ public class User {
     @OptLogField("名称")
     private String name;
 
-    @OptLogField("用户KEY")
+    @OptLogField(value = "用户KEY", function = "@staticTest(#__field)")
     private List<String> keys;
 
     @OptLogField("角色")
