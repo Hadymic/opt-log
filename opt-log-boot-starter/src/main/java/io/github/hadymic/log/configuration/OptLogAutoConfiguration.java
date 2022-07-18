@@ -6,16 +6,19 @@ import io.github.hadymic.log.cache.OptLogFunctionCache;
 import io.github.hadymic.log.function.IDiffFunction;
 import io.github.hadymic.log.function.impl.DefaultDiffFunctionImpl;
 import io.github.hadymic.log.parse.OptLogFunctionParser;
+import io.github.hadymic.log.parse.OptLogSpELSupport;
 import io.github.hadymic.log.service.IOperatorService;
 import io.github.hadymic.log.service.IOptLogService;
 import io.github.hadymic.log.service.impl.DefaultOperatorServiceImpl;
 import io.github.hadymic.log.service.impl.DefaultOptLogServiceImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportAware;
+import org.springframework.context.annotation.Role;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.lang.Nullable;
@@ -48,6 +51,7 @@ public class OptLogAutoConfiguration implements ImportAware {
     }
 
     @Bean
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public OptLogAspect optLogAspect(OptLogFunctionParser optLogFunctionParser,
                                      IOptLogService optLogService) {
         OptLogAspect aspect = new OptLogAspect();
@@ -58,22 +62,25 @@ public class OptLogAutoConfiguration implements ImportAware {
 
     @Bean
     @ConditionalOnMissingBean(IOperatorService.class)
+    @Role(BeanDefinition.ROLE_APPLICATION)
     public IOperatorService operatorService() {
         return new DefaultOperatorServiceImpl();
     }
 
     @Bean
     @ConditionalOnMissingBean(IOptLogService.class)
+    @Role(BeanDefinition.ROLE_APPLICATION)
     public IOptLogService optLogService() {
         return new DefaultOptLogServiceImpl();
     }
 
     @Bean
     @ConditionalOnMissingBean(IDiffFunction.class)
-    public IDiffFunction diffFunction(OptLogFunctionCache optLogFunctionCache,
+    @Role(BeanDefinition.ROLE_APPLICATION)
+    public IDiffFunction diffFunction(OptLogSpELSupport optLogSpELSupport,
                                       OptLogProperties optLogProperties) {
         DefaultDiffFunctionImpl diffFunction = new DefaultDiffFunctionImpl();
-        diffFunction.setFunctionCache(optLogFunctionCache);
+        diffFunction.setOptLogSpELSupport(optLogSpELSupport);
         diffFunction.setProperties(optLogProperties);
         return diffFunction;
     }

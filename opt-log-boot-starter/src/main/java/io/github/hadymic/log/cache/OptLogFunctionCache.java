@@ -5,13 +5,14 @@ import io.github.hadymic.log.model.OptLogFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -27,7 +28,7 @@ public class OptLogFunctionCache implements ApplicationContextAware {
 
     private Map<String, OptLogFunction> functionMap;
 
-    @PostConstruct
+    @EventListener(ApplicationStartedEvent.class)
     public void init() {
         functionMap = new HashMap<>();
         Map<String, Object> beanMap = applicationContext.getBeansWithAnnotation(OptLogFunc.class);

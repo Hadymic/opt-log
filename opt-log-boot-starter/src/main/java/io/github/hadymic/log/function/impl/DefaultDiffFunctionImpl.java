@@ -18,9 +18,10 @@ import java.util.Collection;
  * @author Hadymic
  */
 @Slf4j
-public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffFunction {
+public class DefaultDiffFunctionImpl implements IDiffFunction {
 
     private OptLogProperties properties;
+    private OptLogSpELSupport optLogSpELSupport;
 
     @Override
     public String diffByDiffNode(Object source, Object target, DiffNode diffNode) {
@@ -29,7 +30,7 @@ public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffF
         }
         StringBuilder sb = new StringBuilder();
         diffNode.visit((node, visit) -> visitDiffNode(source, target, node, sb));
-        return sb.toString().replaceAll(properties.getField().getFieldSeparator() + "$", "");
+        return sb.toString().replaceAll(properties.getDiff().getField().getFieldSeparator() + "$", "");
     }
 
     private void visitDiffNode(Object source, Object target, DiffNode node, StringBuilder sb) {
@@ -47,7 +48,7 @@ public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffF
         }
         String content = getDiffContent(source, target, node, fieldName, fieldAnnotation.function());
         if (StringUtils.hasText(content)) {
-            sb.append(content).append(properties.getField().getFieldSeparator());
+            sb.append(content).append(properties.getDiff().getField().getFieldSeparator());
         }
     }
 
@@ -59,18 +60,18 @@ public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffF
         DiffNode.State state = node.getState();
         switch (state) {
             case ADDED:
-                return properties.getDiffTemplate().getAdd()
-                        .replace(properties.getField().getFieldName(), fieldName)
-                        .replace(properties.getField().getTargetValue(), getFunctionResult(node.canonicalGet(target), function));
+                return properties.getDiff().getTemplate().getAdd()
+                        .replace(properties.getDiff().getField().getFieldName(), fieldName)
+                        .replace(properties.getDiff().getField().getTargetValue(), getFunctionResult(node.canonicalGet(target), function));
             case CHANGED:
-                return properties.getDiffTemplate().getUpdate()
-                        .replace(properties.getField().getFieldName(), fieldName)
-                        .replace(properties.getField().getSourceValue(), getFunctionResult(node.canonicalGet(source), function))
-                        .replace(properties.getField().getTargetValue(), getFunctionResult(node.canonicalGet(target), function));
+                return properties.getDiff().getTemplate().getUpdate()
+                        .replace(properties.getDiff().getField().getFieldName(), fieldName)
+                        .replace(properties.getDiff().getField().getSourceValue(), getFunctionResult(node.canonicalGet(source), function))
+                        .replace(properties.getDiff().getField().getTargetValue(), getFunctionResult(node.canonicalGet(target), function));
             case REMOVED:
-                return properties.getDiffTemplate().getDelete()
-                        .replace(properties.getField().getFieldName(), fieldName)
-                        .replace(properties.getField().getSourceValue(), getFunctionResult(node.canonicalGet(source), function));
+                return properties.getDiff().getTemplate().getDelete()
+                        .replace(properties.getDiff().getField().getFieldName(), fieldName)
+                        .replace(properties.getDiff().getField().getSourceValue(), getFunctionResult(node.canonicalGet(source), function));
             default:
                 return "";
         }
@@ -84,18 +85,18 @@ public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffF
         String addContent = getListContent(addList, function);
         String delContent = getListContent(delList, function);
         if (StringUtils.hasText(addContent) && StringUtils.hasText(delContent)) {
-            return properties.getDiffTemplate().getUpdateForList()
-                    .replace(properties.getField().getFieldName(), fieldName)
-                    .replace(properties.getField().getAddValues(), addContent)
-                    .replace(properties.getField().getDelValues(), delContent);
+            return properties.getDiff().getTemplate().getUpdateForList()
+                    .replace(properties.getDiff().getField().getFieldName(), fieldName)
+                    .replace(properties.getDiff().getField().getAddValues(), addContent)
+                    .replace(properties.getDiff().getField().getDelValues(), delContent);
         } else if (StringUtils.hasText(addContent)) {
-            return properties.getDiffTemplate().getAddForList()
-                    .replace(properties.getField().getFieldName(), fieldName)
-                    .replace(properties.getField().getAddValues(), addContent);
+            return properties.getDiff().getTemplate().getAddForList()
+                    .replace(properties.getDiff().getField().getFieldName(), fieldName)
+                    .replace(properties.getDiff().getField().getAddValues(), addContent);
         } else if (StringUtils.hasText(delContent)) {
-            return properties.getDiffTemplate().getDeleteForList()
-                    .replace(properties.getField().getFieldName(), fieldName)
-                    .replace(properties.getField().getDelValues(), delContent);
+            return properties.getDiff().getTemplate().getDeleteForList()
+                    .replace(properties.getDiff().getField().getFieldName(), fieldName)
+                    .replace(properties.getDiff().getField().getDelValues(), delContent);
         } else {
             return "";
         }
@@ -115,7 +116,7 @@ public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffF
     }
 
     private String getListContent(Collection<Object> list, String function) {
-        String separator = properties.getField().getListItemSeparator();
+        String separator = properties.getDiff().getField().getListItemSeparator();
         StringBuilder sb = new StringBuilder();
         for (Object obj : list) {
             sb.append(getFunctionResult(obj, function)).append(separator);
@@ -153,7 +154,7 @@ public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffF
                 parent = parent.getParentNode();
                 continue;
             }
-            parentFieldName.insert(0, fieldAnnotation.value().concat(properties.getField().getOfWord()));
+            parentFieldName.insert(0, fieldAnnotation.value().concat(properties.getDiff().getField().getOfWord()));
             parent = parent.getParentNode();
         }
         return parentFieldName.toString();
@@ -163,12 +164,16 @@ public class DefaultDiffFunctionImpl extends OptLogSpELSupport implements IDiffF
         if (!StringUtils.hasText(function)) {
             return String.valueOf(value);
         }
-        OptLogContext.putVariable(properties.getVariable().getDiffField(), value);
-        Object result = resolveTemplate(function);
+        OptLogContext.putVariable(properties.getDiff().getField().getFunctionField(), value);
+        Object result = optLogSpELSupport.resolveTemplate(function);
         return String.valueOf(result);
     }
 
     public void setProperties(OptLogProperties properties) {
         this.properties = properties;
+    }
+
+    public void setOptLogSpELSupport(OptLogSpELSupport optLogSpELSupport) {
+        this.optLogSpELSupport = optLogSpELSupport;
     }
 }

@@ -34,7 +34,7 @@ public abstract class OptLogSpELSupport {
         return obj.toString();
     }
 
-    protected Object resolveTemplate(String template) {
+    public Object resolveTemplate(String template) {
         if (!StringUtils.hasText(template)) {
             return null;
         }
@@ -45,7 +45,7 @@ public abstract class OptLogSpELSupport {
         return expression.getValue(context);
     }
 
-    protected <T> T resolveTemplate(String template, Class<T> clazz) {
+    public <T> T resolveTemplate(String template, Class<T> clazz) {
         if (!StringUtils.hasText(template)) {
             return null;
         }

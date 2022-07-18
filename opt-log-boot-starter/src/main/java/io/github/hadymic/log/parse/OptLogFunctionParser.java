@@ -12,13 +12,14 @@ import io.github.hadymic.log.model.OptLogSpELStatus;
 import io.github.hadymic.log.service.IOperatorService;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.util.CollectionUtils;
 
-import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +42,7 @@ public class OptLogFunctionParser extends OptLogSpELSupport implements Applicati
 
     private OptLogSpELStatus spELStatus;
 
-    @PostConstruct
+    @EventListener(ApplicationStartedEvent.class)
     public void init() {
         Map<String, Object> beanMap = applicationContext.getBeansWithAnnotation(EnableOptLog.class);
         OptLogSpEL[] array = OptLogSpEL.ALL;
