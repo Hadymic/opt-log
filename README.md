@@ -12,7 +12,7 @@ opt-log是一款基于SpringBoot和SpEL表达式的通用操作日志组件，�
 <dependency>
     <groupId>io.github.hadymic</groupId>
     <artifactId>opt-log-boot-starter</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
