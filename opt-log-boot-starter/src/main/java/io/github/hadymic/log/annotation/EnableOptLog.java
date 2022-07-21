@@ -25,6 +25,10 @@ public @interface EnableOptLog {
 
     int order() default Ordered.LOWEST_PRECEDENCE;
 
+    /**
+     * 是否全局启用{@link OptLog @OptLog}参数的SpEL解析功能
+     * 默认全部启用
+     */
     OptLogSpEL[] enableSpEL() default {
             OptLogSpEL.SUCCESS, OptLogSpEL.FAIL,
             OptLogSpEL.OPERATOR, OptLogSpEL.BIZ_ID,
